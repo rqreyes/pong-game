@@ -212,6 +212,13 @@ int main()
 	{
 		// update objects
 		// --------------------
+		auto CheckCollision = [](Paddle player_paddle)
+		{
+			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_paddle.x, player_paddle.y, player_paddle.width, player_paddle.height}))
+			{
+				ball.speed_x *= -1;
+			}
+		};
 		auto ResetGame = [&game_new]()
 		{
 			ball.ResetBall();
@@ -236,15 +243,9 @@ int main()
 			ball.Update();
 			cpu_1_paddle.Update(ball.y);
 			cpu_2_paddle.Update(ball.y);
+			CheckCollision(cpu_1_paddle);
+			CheckCollision(cpu_2_paddle);
 
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu_1_paddle.x, cpu_1_paddle.y, cpu_1_paddle.width, cpu_1_paddle.height}))
-			{
-				ball.speed_x *= -1;
-			}
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu_2_paddle.x, cpu_2_paddle.y, cpu_2_paddle.width, cpu_2_paddle.height}))
-			{
-				ball.speed_x *= -1;
-			}
 			if (IsKeyPressed(KEY_ONE))
 			{
 				screen_current = MODE_1_PLAYER;
@@ -274,15 +275,8 @@ int main()
 				ball.Update();
 				player_1_paddle.Update();
 				cpu_2_paddle.Update(ball.y);
-
-				if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1_paddle.x, player_1_paddle.y, player_1_paddle.width, player_1_paddle.height}))
-				{
-					ball.speed_x *= -1;
-				}
-				if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu_2_paddle.x, cpu_2_paddle.y, cpu_2_paddle.width, cpu_2_paddle.height}))
-				{
-					ball.speed_x *= -1;
-				}
+				CheckCollision(player_1_paddle);
+				CheckCollision(cpu_2_paddle);
 			}
 
 			break;
@@ -303,15 +297,8 @@ int main()
 				ball.Update();
 				player_1_paddle.Update();
 				player_2_paddle.Update();
-
-				if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1_paddle.x, player_1_paddle.y, player_1_paddle.width, player_1_paddle.height}))
-				{
-					ball.speed_x *= -1;
-				}
-				if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_2_paddle.x, player_2_paddle.y, player_2_paddle.width, player_2_paddle.height}))
-				{
-					ball.speed_x *= -1;
-				}
+				CheckCollision(player_1_paddle);
+				CheckCollision(player_2_paddle);
 			}
 
 			break;
