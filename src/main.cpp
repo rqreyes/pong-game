@@ -12,14 +12,16 @@ const int font_size_h1 = 80;
 const int font_size_h2 = 40;
 const int font_size_p = 20;
 
+Color overlay = Color{0, 0, 0, 180};
 Color green = Color{38, 185, 154, 255};
 Color green_dark = Color{20, 160, 133, 255};
 Color green_light = Color{129, 204, 184, 255};
 Color yellow = Color{243, 213, 91, 255};
 
-int score_player_1 = 0;
-int score_cpu = 0;
-int score_player_2 = 0;
+int cpu_1_score = 0;
+int cpu_2_score = 0;
+int player_1_score = 0;
+int player_2_score = 0;
 
 class Ball
 {
@@ -43,13 +45,14 @@ public:
 		}
 		if (x + radius >= GetScreenWidth())
 		{
-			score_player_1 += 1;
+			cpu_1_score += 1;
+			player_1_score += 1;
 			ResetBall();
 		}
 		if (x - radius <= 0)
 		{
-			score_player_2 += 1;
-			score_cpu += 1;
+			cpu_2_score += 1;
+			player_2_score += 1;
 			ResetBall();
 		}
 	}
@@ -139,9 +142,10 @@ public:
 };
 
 Ball ball;
-PaddlePlayer1 player_1;
-PaddlePlayer2 player_2;
-PaddleCpu cpu;
+PaddleCpu cpu_1_paddle;
+PaddleCpu cpu_2_paddle;
+PaddlePlayer1 player_1_paddle;
+PaddlePlayer2 player_2_paddle;
 
 // --------------------
 // entry point
@@ -164,23 +168,29 @@ int main()
 	ball.speed_x = 7;
 	ball.speed_y = 7;
 
-	player_1.width = 25;
-	player_1.height = 120;
-	player_1.x = 10;
-	player_1.y = SCREEN_HEIGHT / 2 - player_1.height / 2;
-	player_1.speed = 6;
+	cpu_1_paddle.width = 25;
+	cpu_1_paddle.height = 120;
+	cpu_1_paddle.x = 10;
+	cpu_1_paddle.y = SCREEN_HEIGHT / 2 - cpu_1_paddle.height / 2;
+	cpu_1_paddle.speed = 6;
 
-	player_2.width = 25;
-	player_2.height = 120;
-	player_2.x = SCREEN_WIDTH - player_2.width - 10;
-	player_2.y = SCREEN_HEIGHT / 2 - player_2.height / 2;
-	player_2.speed = 6;
+	cpu_2_paddle.width = 25;
+	cpu_2_paddle.height = 120;
+	cpu_2_paddle.x = SCREEN_WIDTH - cpu_2_paddle.width - 10;
+	cpu_2_paddle.y = SCREEN_HEIGHT / 2 - cpu_2_paddle.height / 2;
+	cpu_2_paddle.speed = 6;
 
-	cpu.width = 25;
-	cpu.height = 120;
-	cpu.x = SCREEN_WIDTH - cpu.width - 10;
-	cpu.y = SCREEN_HEIGHT / 2 - cpu.height / 2;
-	cpu.speed = 6;
+	player_1_paddle.width = 25;
+	player_1_paddle.height = 120;
+	player_1_paddle.x = 10;
+	player_1_paddle.y = SCREEN_HEIGHT / 2 - player_1_paddle.height / 2;
+	player_1_paddle.speed = 6;
+
+	player_2_paddle.width = 25;
+	player_2_paddle.height = 120;
+	player_2_paddle.x = SCREEN_WIDTH - player_2_paddle.width - 10;
+	player_2_paddle.y = SCREEN_HEIGHT / 2 - player_2_paddle.height / 2;
+	player_2_paddle.speed = 6;
 
 	// game loop
 	// --------------------
@@ -191,6 +201,18 @@ int main()
 		switch (screen_current)
 		{
 		case TITLE:
+			ball.Update();
+			cpu_1_paddle.Update(ball.y);
+			cpu_2_paddle.Update(ball.y);
+
+			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu_1_paddle.x, cpu_1_paddle.y, cpu_1_paddle.width, cpu_1_paddle.height}))
+			{
+				ball.speed_x *= -1;
+			}
+			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu_2_paddle.x, cpu_2_paddle.y, cpu_2_paddle.width, cpu_2_paddle.height}))
+			{
+				ball.speed_x *= -1;
+			}
 			if (IsKeyPressed(KEY_ONE))
 			{
 				screen_current = MODE_1_PLAYER;
@@ -203,14 +225,14 @@ int main()
 			break;
 		case MODE_1_PLAYER:
 			ball.Update();
-			player_1.Update();
-			cpu.Update(ball.y);
+			player_1_paddle.Update();
+			cpu_2_paddle.Update(ball.y);
 
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu.x, cpu.y, cpu.width, cpu.height}))
+			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1_paddle.x, player_1_paddle.y, player_1_paddle.width, player_1_paddle.height}))
 			{
 				ball.speed_x *= -1;
 			}
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1.x, player_1.y, player_1.width, player_1.height}))
+			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu_2_paddle.x, cpu_2_paddle.y, cpu_2_paddle.width, cpu_2_paddle.height}))
 			{
 				ball.speed_x *= -1;
 			}
@@ -218,14 +240,14 @@ int main()
 			break;
 		case MODE_2_PLAYER:
 			ball.Update();
-			player_1.Update();
-			player_2.Update();
+			player_1_paddle.Update();
+			player_2_paddle.Update();
 
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1.x, player_1.y, player_1.width, player_1.height}))
+			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1_paddle.x, player_1_paddle.y, player_1_paddle.width, player_1_paddle.height}))
 			{
 				ball.speed_x *= -1;
 			}
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_2.x, player_2.y, player_2.width, player_2.height}))
+			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_2_paddle.x, player_2_paddle.y, player_2_paddle.width, player_2_paddle.height}))
 			{
 				ball.speed_x *= -1;
 			}
@@ -254,6 +276,13 @@ int main()
 			const char *subtitle_text_2 = "Press 2 for 2-player mode";
 			const int subtitle_width_2 = MeasureText(subtitle_text_2, font_size_h2);
 
+			ball.Draw();
+			cpu_1_paddle.Draw();
+			cpu_2_paddle.Draw();
+			DrawText(TextFormat("%i", cpu_1_score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", cpu_1_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+			DrawText(TextFormat("%i", cpu_2_score), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", cpu_2_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+
+			DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, overlay);
 			DrawText(title_text, SCREEN_WIDTH / 2 - title_width / 2, 300, font_size_h1, WHITE);
 			DrawText(subtitle_text_1, SCREEN_WIDTH / 2 - subtitle_width_1 / 2, 400, font_size_h2, WHITE);
 			DrawText(subtitle_text_2, SCREEN_WIDTH / 2 - subtitle_width_2 / 2, 450, font_size_h2, WHITE);
@@ -262,18 +291,18 @@ int main()
 		}
 		case MODE_1_PLAYER:
 			ball.Draw();
-			player_1.Draw();
-			cpu.Draw();
-			DrawText(TextFormat("%i", score_player_1), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", score_player_1), font_size_h1) / 2), 20, font_size_h1, WHITE);
-			DrawText(TextFormat("%i", score_cpu), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", score_cpu), font_size_h1) / 2), 20, font_size_h1, WHITE);
+			player_1_paddle.Draw();
+			cpu_2_paddle.Draw();
+			DrawText(TextFormat("%i", player_1_score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", player_1_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+			DrawText(TextFormat("%i", cpu_2_score), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", cpu_2_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
 
 			break;
 		case MODE_2_PLAYER:
 			ball.Draw();
-			player_1.Draw();
-			player_2.Draw();
-			DrawText(TextFormat("%i", score_player_1), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", score_player_1), font_size_h1) / 2), 20, font_size_h1, WHITE);
-			DrawText(TextFormat("%i", score_player_2), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", score_player_2), font_size_h1) / 2), 20, font_size_h1, WHITE);
+			player_1_paddle.Draw();
+			player_2_paddle.Draw();
+			DrawText(TextFormat("%i", player_1_score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", player_1_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+			DrawText(TextFormat("%i", player_2_score), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", player_2_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
 
 			break;
 		default:
