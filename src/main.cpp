@@ -23,6 +23,14 @@ int cpu_2_score = 0;
 int player_1_score = 0;
 int player_2_score = 0;
 
+void ScoreReset()
+{
+	cpu_1_score = 0;
+	cpu_2_score = 0;
+	player_1_score = 0;
+	player_2_score = 0;
+}
+
 class Ball
 {
 public:
@@ -90,6 +98,10 @@ public:
 	void Draw()
 	{
 		DrawRectangleRounded(Rectangle{x, y, width, height}, 0.8, 0, WHITE);
+	}
+	void ResetPaddle(int paddle_height)
+	{
+		y = GetScreenHeight() / 2 - paddle_height / 2;
 	}
 };
 class PaddlePlayer1 : public Paddle
@@ -161,6 +173,8 @@ int main()
 	SetTargetFPS(60);
 
 	screen_t screen_current = TITLE;
+	bool screen_pause = false;
+	bool game_new = true;
 
 	ball.radius = 20;
 	ball.x = SCREEN_WIDTH / 2;
@@ -198,6 +212,24 @@ int main()
 	{
 		// update objects
 		// --------------------
+		auto ResetGame = [&game_new]()
+		{
+			ball.ResetBall();
+			cpu_1_paddle.ResetPaddle(cpu_1_paddle.height);
+			cpu_2_paddle.ResetPaddle(cpu_2_paddle.height);
+			player_1_paddle.ResetPaddle(player_1_paddle.height);
+			player_2_paddle.ResetPaddle(player_2_paddle.height);
+			ScoreReset();
+			game_new = false;
+		};
+		auto EndGame = [&game_new, &screen_pause, &ResetGame, &screen_current]()
+		{
+			screen_pause = !screen_pause;
+			screen_current = TITLE;
+			ResetGame();
+			game_new = true;
+		};
+
 		switch (screen_current)
 		{
 		case TITLE:
@@ -216,40 +248,70 @@ int main()
 			if (IsKeyPressed(KEY_ONE))
 			{
 				screen_current = MODE_1_PLAYER;
+				ResetGame();
 			}
 			else if (IsKeyPressed(KEY_TWO))
 			{
 				screen_current = MODE_2_PLAYER;
+				ResetGame();
 			}
 
 			break;
 		case MODE_1_PLAYER:
-			ball.Update();
-			player_1_paddle.Update();
-			cpu_2_paddle.Update(ball.y);
-
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1_paddle.x, player_1_paddle.y, player_1_paddle.width, player_1_paddle.height}))
+			if (IsKeyPressed(KEY_P))
 			{
-				ball.speed_x *= -1;
+				screen_pause = !screen_pause;
 			}
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu_2_paddle.x, cpu_2_paddle.y, cpu_2_paddle.width, cpu_2_paddle.height}))
+			if (screen_pause)
 			{
-				ball.speed_x *= -1;
+				if (IsKeyPressed(KEY_X))
+				{
+					EndGame();
+				}
+			}
+			else
+			{
+				ball.Update();
+				player_1_paddle.Update();
+				cpu_2_paddle.Update(ball.y);
+
+				if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1_paddle.x, player_1_paddle.y, player_1_paddle.width, player_1_paddle.height}))
+				{
+					ball.speed_x *= -1;
+				}
+				if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu_2_paddle.x, cpu_2_paddle.y, cpu_2_paddle.width, cpu_2_paddle.height}))
+				{
+					ball.speed_x *= -1;
+				}
 			}
 
 			break;
 		case MODE_2_PLAYER:
-			ball.Update();
-			player_1_paddle.Update();
-			player_2_paddle.Update();
-
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1_paddle.x, player_1_paddle.y, player_1_paddle.width, player_1_paddle.height}))
+			if (IsKeyPressed(KEY_P))
 			{
-				ball.speed_x *= -1;
+				screen_pause = !screen_pause;
 			}
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_2_paddle.x, player_2_paddle.y, player_2_paddle.width, player_2_paddle.height}))
+			if (screen_pause)
 			{
-				ball.speed_x *= -1;
+				if (IsKeyPressed(KEY_X))
+				{
+					EndGame();
+				}
+			}
+			else
+			{
+				ball.Update();
+				player_1_paddle.Update();
+				player_2_paddle.Update();
+
+				if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_1_paddle.x, player_1_paddle.y, player_1_paddle.width, player_1_paddle.height}))
+				{
+					ball.speed_x *= -1;
+				}
+				if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_2_paddle.x, player_2_paddle.y, player_2_paddle.width, player_2_paddle.height}))
+				{
+					ball.speed_x *= -1;
+				}
 			}
 
 			break;
@@ -259,11 +321,28 @@ int main()
 
 		// draw objects
 		// --------------------
+		auto DrawPause = []()
+		{
+			const char *title_text = "Pause";
+			const char *subtitle_text_1 = "Press p to resume";
+			const char *subtitle_text_2 = "Press x to end game";
+
+			const int title_width = MeasureText(title_text, font_size_h1);
+			const int subtitle_width_1 = MeasureText(subtitle_text_1, font_size_h2);
+			const int subtitle_width_2 = MeasureText(subtitle_text_2, font_size_h2);
+
+			DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, overlay);
+			DrawText(title_text, SCREEN_WIDTH / 2 - title_width / 2, 300, font_size_h1, WHITE);
+			DrawText(subtitle_text_1, SCREEN_WIDTH / 2 - subtitle_width_1 / 2, 400, font_size_h2, WHITE);
+			DrawText(subtitle_text_2, SCREEN_WIDTH / 2 - subtitle_width_2 / 2, 450, font_size_h2, WHITE);
+		};
+
 		BeginDrawing();
 		ClearBackground(green_dark);
 		DrawRectangle(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT, green);
 		DrawCircle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 150, green_light);
 		DrawLine(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT, WHITE);
+		ball.Draw();
 
 		switch (screen_current)
 		{
@@ -276,7 +355,6 @@ int main()
 			const char *subtitle_text_2 = "Press 2 for 2-player mode";
 			const int subtitle_width_2 = MeasureText(subtitle_text_2, font_size_h2);
 
-			ball.Draw();
 			cpu_1_paddle.Draw();
 			cpu_2_paddle.Draw();
 			DrawText(TextFormat("%i", cpu_1_score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", cpu_1_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
@@ -290,19 +368,27 @@ int main()
 			break;
 		}
 		case MODE_1_PLAYER:
-			ball.Draw();
 			player_1_paddle.Draw();
 			cpu_2_paddle.Draw();
 			DrawText(TextFormat("%i", player_1_score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", player_1_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
 			DrawText(TextFormat("%i", cpu_2_score), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", cpu_2_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
 
+			if (screen_pause)
+			{
+				DrawPause();
+			}
+
 			break;
 		case MODE_2_PLAYER:
-			ball.Draw();
 			player_1_paddle.Draw();
 			player_2_paddle.Draw();
 			DrawText(TextFormat("%i", player_1_score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", player_1_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
 			DrawText(TextFormat("%i", player_2_score), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", player_2_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+
+			if (screen_pause)
+			{
+				DrawPause();
+			}
 
 			break;
 		default:
