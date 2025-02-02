@@ -1,4 +1,5 @@
 #include <raylib.h>
+#include <iostream>
 
 Color green = Color{38, 185, 154, 255};
 Color green_dark = Color{20, 160, 133, 255};
@@ -108,15 +109,23 @@ Ball ball;
 Paddle player;
 PaddleCpu cpu;
 
+// --------------------
+// entry point
+// --------------------
 int main()
 {
-	// definitions
-	// ********************
+	// initialization
+	// --------------------
 	const int SCREEN_WIDTH = 1280;
 	const int SCREEN_HEIGHT = 800;
 
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "my pong game");
 	SetTargetFPS(60);
+
+	bool startGame = false;
+	int font_size = 80;
+	const char *text = "Press spacebar to start";
+	const int text_width_x = MeasureText(text, font_size);
 
 	ball.radius = 20;
 	ball.x = SCREEN_WIDTH / 2;
@@ -136,39 +145,59 @@ int main()
 	cpu.y = SCREEN_HEIGHT / 2 - cpu.height / 2;
 	cpu.speed = 6;
 
-	// loop
-	// ********************
-	while (WindowShouldClose() == false)
+	// game loop
+	// --------------------
+	while (!WindowShouldClose())
 	{
-		// update positions
-		ball.Update();
-		player.Update();
-		cpu.Update(ball.y);
-
-		if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player.x, player.y, player.width, player.height}))
-		{
-			ball.speed_x *= -1;
-		}
-		else if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu.x, cpu.y, cpu.width, cpu.height}))
-		{
-			ball.speed_x *= -1;
-		}
-
-		// draw objects
 		BeginDrawing();
 		ClearBackground(green_dark);
 		DrawRectangle(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT, green);
 		DrawCircle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 150, green_light);
 		DrawLine(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT, WHITE);
-		ball.Draw();
-		cpu.Draw();
-		player.Draw();
-		DrawText(TextFormat("%i", score_cpu), SCREEN_WIDTH / 4 - 20, 20, 80, WHITE);
-		DrawText(TextFormat("%i", score_player), SCREEN_WIDTH * 3 / 4 - 20, 20, 80, WHITE);
+
+		// game screen
+		if (startGame)
+		{
+			// update positions
+			// --------------------
+			ball.Update();
+			player.Update();
+			cpu.Update(ball.y);
+
+			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player.x, player.y, player.width, player.height}))
+			{
+				ball.speed_x *= -1;
+			}
+			else if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{cpu.x, cpu.y, cpu.width, cpu.height}))
+			{
+				ball.speed_x *= -1;
+			}
+
+			// draw objects
+			// --------------------
+			ball.Draw();
+			cpu.Draw();
+			player.Draw();
+			DrawText(TextFormat("%i", score_cpu), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", score_cpu), font_size) / 2), 20, font_size, WHITE);
+			DrawText(TextFormat("%i", score_player), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", score_player), font_size) / 2), 20, font_size, WHITE);
+		}
+		// start screen
+		else
+		{
+
+			DrawText(text, SCREEN_WIDTH / 2 - text_width_x / 2, SCREEN_HEIGHT / 2 - font_size / 2, font_size, WHITE);
+
+			if (IsKeyPressed(KEY_SPACE))
+			{
+				startGame = true;
+			}
+		}
 
 		EndDrawing();
 	}
 
+	// termination
+	// --------------------
 	CloseWindow();
 	return 0;
 }
