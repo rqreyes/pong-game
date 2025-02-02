@@ -55,16 +55,16 @@ public:
 		{
 			cpu_1_score += 1;
 			player_1_score += 1;
-			ResetBall();
+			Reset();
 		}
 		if (x - radius <= 0)
 		{
 			cpu_2_score += 1;
 			player_2_score += 1;
-			ResetBall();
+			Reset();
 		}
 	}
-	void ResetBall()
+	void Reset()
 	{
 		x = GetScreenWidth() / 2;
 		y = GetScreenHeight() / 2;
@@ -99,7 +99,7 @@ public:
 	{
 		DrawRectangleRounded(Rectangle{x, y, width, height}, 0.8, 0, WHITE);
 	}
-	void ResetPaddle(int paddle_height)
+	void Reset(int paddle_height)
 	{
 		y = GetScreenHeight() / 2 - paddle_height / 2;
 	}
@@ -152,12 +152,31 @@ public:
 		LimitMovement();
 	}
 };
+class Timer
+{
+public:
+	double timestamp_start;
+	double timestamp_end;
+	double elapsed;
+
+	void Update()
+	{
+		timestamp_end = GetTime();
+		elapsed = timestamp_end - timestamp_start;
+	}
+	void Reset()
+	{
+		timestamp_start = GetTime();
+		elapsed = 0;
+	}
+};
 
 Ball ball;
 PaddleCpu cpu_1_paddle;
 PaddleCpu cpu_2_paddle;
 PaddlePlayer1 player_1_paddle;
 PaddlePlayer2 player_2_paddle;
+Timer timer;
 
 // --------------------
 // entry point
@@ -206,6 +225,10 @@ int main()
 	player_2_paddle.y = SCREEN_HEIGHT / 2 - player_2_paddle.height / 2;
 	player_2_paddle.speed = 6;
 
+	timer.elapsed = 0;
+	timer.timestamp_end = GetTime();
+	timer.timestamp_start = GetTime();
+
 	// game loop
 	// --------------------
 	while (!WindowShouldClose())
@@ -221,12 +244,13 @@ int main()
 		};
 		auto ResetGame = [&game_new]()
 		{
-			ball.ResetBall();
-			cpu_1_paddle.ResetPaddle(cpu_1_paddle.height);
-			cpu_2_paddle.ResetPaddle(cpu_2_paddle.height);
-			player_1_paddle.ResetPaddle(player_1_paddle.height);
-			player_2_paddle.ResetPaddle(player_2_paddle.height);
+			ball.Reset();
+			cpu_1_paddle.Reset(cpu_1_paddle.height);
+			cpu_2_paddle.Reset(cpu_2_paddle.height);
+			player_1_paddle.Reset(player_1_paddle.height);
+			player_2_paddle.Reset(player_2_paddle.height);
 			ScoreReset();
+			timer.Reset();
 			game_new = false;
 		};
 		auto EndGame = [&game_new, &screen_pause, &ResetGame, &screen_current]()
@@ -245,6 +269,7 @@ int main()
 			cpu_2_paddle.Update(ball.y);
 			CheckCollision(cpu_1_paddle);
 			CheckCollision(cpu_2_paddle);
+			timer.Update();
 
 			if (IsKeyPressed(KEY_ONE))
 			{
@@ -277,6 +302,7 @@ int main()
 				cpu_2_paddle.Update(ball.y);
 				CheckCollision(player_1_paddle);
 				CheckCollision(cpu_2_paddle);
+				timer.Update();
 			}
 
 			break;
@@ -299,6 +325,7 @@ int main()
 				player_2_paddle.Update();
 				CheckCollision(player_1_paddle);
 				CheckCollision(player_2_paddle);
+				timer.Update();
 			}
 
 			break;
@@ -308,6 +335,17 @@ int main()
 
 		// draw objects
 		// --------------------
+		const char *timer_text = TextFormat("%02i:%02i", static_cast<int>(timer.elapsed) / 60, static_cast<int>(std::fmod(timer.elapsed, 60)));
+		const int timer_width = MeasureText(timer_text, font_size_h2);
+
+		auto DrawScoreLeft = [](int score)
+		{
+			DrawText(TextFormat("%i", score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+		};
+		auto DrawScoreRight = [](int score)
+		{
+			DrawText(TextFormat("%i", score), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+		};
 		auto DrawPause = []()
 		{
 			const char *title_text = "Pause";
@@ -330,22 +368,24 @@ int main()
 		DrawCircle(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 150, green_light);
 		DrawLine(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT, WHITE);
 		ball.Draw();
+		DrawText(timer_text, SCREEN_WIDTH / 2 - timer_width / 2, 20, font_size_h2, WHITE);
 
 		switch (screen_current)
 		{
 		case TITLE:
 		{
 			const char *title_text = "My Pong Game";
-			const int title_width = MeasureText(title_text, font_size_h1);
 			const char *subtitle_text_1 = "Press 1 for 1-player mode";
-			const int subtitle_width_1 = MeasureText(subtitle_text_1, font_size_h2);
 			const char *subtitle_text_2 = "Press 2 for 2-player mode";
+
+			const int title_width = MeasureText(title_text, font_size_h1);
+			const int subtitle_width_1 = MeasureText(subtitle_text_1, font_size_h2);
 			const int subtitle_width_2 = MeasureText(subtitle_text_2, font_size_h2);
 
 			cpu_1_paddle.Draw();
 			cpu_2_paddle.Draw();
-			DrawText(TextFormat("%i", cpu_1_score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", cpu_1_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
-			DrawText(TextFormat("%i", cpu_2_score), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", cpu_2_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+			DrawScoreLeft(cpu_1_score);
+			DrawScoreRight(cpu_2_score);
 
 			DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, overlay);
 			DrawText(title_text, SCREEN_WIDTH / 2 - title_width / 2, 300, font_size_h1, WHITE);
@@ -357,8 +397,8 @@ int main()
 		case MODE_1_PLAYER:
 			player_1_paddle.Draw();
 			cpu_2_paddle.Draw();
-			DrawText(TextFormat("%i", player_1_score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", player_1_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
-			DrawText(TextFormat("%i", cpu_2_score), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", cpu_2_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+			DrawScoreLeft(player_1_score);
+			DrawScoreRight(cpu_2_score);
 
 			if (screen_pause)
 			{
@@ -369,8 +409,8 @@ int main()
 		case MODE_2_PLAYER:
 			player_1_paddle.Draw();
 			player_2_paddle.Draw();
-			DrawText(TextFormat("%i", player_1_score), (SCREEN_WIDTH / 4) - (MeasureText(TextFormat("%i", player_1_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
-			DrawText(TextFormat("%i", player_2_score), (SCREEN_WIDTH * 3 / 4) - (MeasureText(TextFormat("%i", player_2_score), font_size_h1) / 2), 20, font_size_h1, WHITE);
+			DrawScoreLeft(player_1_score);
+			DrawScoreRight(player_2_score);
 
 			if (screen_pause)
 			{
