@@ -3,10 +3,16 @@
 
 typedef enum
 {
+	GAMEPLAY_2_CPU,
+	GAMEPLAY_1_PLAYER,
+	GAMEPLAY_2_PLAYER,
+} screen_gameplay_t;
+typedef enum
+{
 	TITLE,
-	MODE_1_PLAYER,
-	MODE_2_PLAYER
-} screen_t;
+	PAUSE,
+	CONTROLS,
+} screen_overlay_t;
 
 const int font_size_h1 = 80;
 const int font_size_h2 = 40;
@@ -182,9 +188,11 @@ int main()
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "My Pong Game");
 	SetTargetFPS(60);
 
-	screen_t screen_current = TITLE;
-	bool screen_pause = false;
-	bool game_new = true;
+	screen_gameplay_t screen_gameplay_current = GAMEPLAY_2_CPU;
+	screen_overlay_t screen_overlay_current = TITLE;
+	bool is_screen_overlay_displaying = true;
+	bool is_game_new = true;
+	bool is_game_updating = true;
 
 	ball.radius = 20;
 	ball.x = SCREEN_WIDTH / 2;
@@ -251,7 +259,7 @@ int main()
 				ball.speed_x *= -1;
 			}
 		};
-		auto ResetGame = [&game_new]()
+		auto ResetGame = [&is_game_new]()
 		{
 			ball.Reset();
 			cpu_1_paddle.Reset(cpu_1_paddle.height);
@@ -260,19 +268,21 @@ int main()
 			player_2_paddle.Reset(player_2_paddle.height);
 			ScoreReset();
 			timer.Reset();
-			game_new = false;
+			is_game_new = false;
 		};
-		auto EndGame = [&game_new, &screen_pause, &ResetGame, &screen_current]()
+		auto EndGame = [&is_game_new, &is_screen_overlay_displaying, &ResetGame, &screen_gameplay_current, &screen_overlay_current]()
 		{
-			screen_pause = !screen_pause;
-			screen_current = TITLE;
+			is_screen_overlay_displaying = true;
+			screen_overlay_current = TITLE;
+			screen_gameplay_current = GAMEPLAY_2_CPU;
 			ResetGame();
-			game_new = true;
+			is_game_new = true;
 		};
 
-		switch (screen_current)
+		// handle gameplay
+		switch (screen_gameplay_current)
 		{
-		case TITLE:
+		case GAMEPLAY_2_CPU:
 			ball.Update(timer.speed_multiplier);
 			cpu_1_paddle.Update(ball.y, timer.speed_multiplier);
 			cpu_2_paddle.Update(ball.y, timer.speed_multiplier);
@@ -281,31 +291,15 @@ int main()
 			CheckCollisionPaddle(cpu_2_paddle);
 			timer.Update();
 
-			if (IsKeyPressed(KEY_ONE))
-			{
-				screen_current = MODE_1_PLAYER;
-				ResetGame();
-			}
-			else if (IsKeyPressed(KEY_TWO))
-			{
-				screen_current = MODE_2_PLAYER;
-				ResetGame();
-			}
-
 			break;
-		case MODE_1_PLAYER:
+		case GAMEPLAY_1_PLAYER:
 			if (IsKeyPressed(KEY_P))
 			{
-				screen_pause = !screen_pause;
+				is_screen_overlay_displaying = true;
+				screen_overlay_current = PAUSE;
+				is_game_updating = false;
 			}
-			if (screen_pause)
-			{
-				if (IsKeyPressed(KEY_X))
-				{
-					EndGame();
-				}
-			}
-			else
+			if (is_game_updating)
 			{
 				ball.Update(timer.speed_multiplier);
 				player_1_paddle.Update(timer.speed_multiplier);
@@ -317,19 +311,14 @@ int main()
 			}
 
 			break;
-		case MODE_2_PLAYER:
+		case GAMEPLAY_2_PLAYER:
 			if (IsKeyPressed(KEY_P))
 			{
-				screen_pause = !screen_pause;
+				is_screen_overlay_displaying = true;
+				screen_overlay_current = PAUSE;
+				is_game_updating = false;
 			}
-			if (screen_pause)
-			{
-				if (IsKeyPressed(KEY_X))
-				{
-					EndGame();
-				}
-			}
-			else
+			if (is_game_updating)
 			{
 				ball.Update(timer.speed_multiplier);
 				player_1_paddle.Update(timer.speed_multiplier);
@@ -343,6 +332,69 @@ int main()
 			break;
 		default:
 			break;
+		}
+
+		// handle overlay
+		if (is_screen_overlay_displaying)
+		{
+			switch (screen_overlay_current)
+			{
+			case TITLE:
+				if (IsKeyPressed(KEY_ONE))
+				{
+					is_screen_overlay_displaying = false;
+					screen_gameplay_current = GAMEPLAY_1_PLAYER;
+					ResetGame();
+				}
+				else if (IsKeyPressed(KEY_TWO))
+				{
+					is_screen_overlay_displaying = false;
+					screen_gameplay_current = GAMEPLAY_2_PLAYER;
+					ResetGame();
+				}
+				else if (IsKeyPressed(KEY_C))
+				{
+					screen_overlay_current = CONTROLS;
+				}
+
+				break;
+			case PAUSE:
+				if (IsKeyPressed(KEY_R))
+				{
+					is_screen_overlay_displaying = false;
+					is_game_updating = true;
+				}
+				else if (IsKeyPressed(KEY_X))
+				{
+					EndGame();
+					is_game_updating = true;
+				}
+				else if (IsKeyPressed(KEY_C))
+				{
+					screen_overlay_current = CONTROLS;
+				}
+
+				break;
+			case CONTROLS:
+				if (screen_gameplay_current == GAMEPLAY_2_CPU)
+				{
+					if (IsKeyPressed(KEY_B))
+					{
+						screen_overlay_current = TITLE;
+					}
+				}
+				else
+				{
+					if (IsKeyPressed(KEY_B))
+					{
+						screen_overlay_current = PAUSE;
+					}
+				}
+
+				break;
+			default:
+				break;
+			}
 		}
 
 		// draw objects
@@ -363,17 +415,38 @@ int main()
 		auto DrawPause = []()
 		{
 			const char *title_text = "Pause";
-			const char *subtitle_text_1 = "Press p to resume";
-			const char *subtitle_text_2 = "Press x to end game";
+			const char *subtitle_text_1 = "Press r to resume";
+			const char *subtitle_text_2 = "Press c to view controls";
+			const char *subtitle_text_3 = "Press x to end game";
 
 			const int title_width = MeasureText(title_text, font_size_h1);
 			const int subtitle_width_1 = MeasureText(subtitle_text_1, font_size_h2);
 			const int subtitle_width_2 = MeasureText(subtitle_text_2, font_size_h2);
+			const int subtitle_width_3 = MeasureText(subtitle_text_3, font_size_h2);
 
 			DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, overlay);
-			DrawText(title_text, SCREEN_WIDTH / 2 - title_width / 2, 300, font_size_h1, WHITE);
-			DrawText(subtitle_text_1, SCREEN_WIDTH / 2 - subtitle_width_1 / 2, 400, font_size_h2, WHITE);
-			DrawText(subtitle_text_2, SCREEN_WIDTH / 2 - subtitle_width_2 / 2, 450, font_size_h2, WHITE);
+			DrawText(title_text, SCREEN_WIDTH / 2 - title_width / 2, 250, font_size_h1, WHITE);
+			DrawText(subtitle_text_1, SCREEN_WIDTH / 2 - subtitle_width_1 / 2, 350, font_size_h2, WHITE);
+			DrawText(subtitle_text_2, SCREEN_WIDTH / 2 - subtitle_width_2 / 2, 400, font_size_h2, WHITE);
+			DrawText(subtitle_text_3, SCREEN_WIDTH / 2 - subtitle_width_3 / 2, 500, font_size_h2, WHITE);
+		};
+		auto DrawControls = []()
+		{
+			const char *title_text = "Controls";
+			const char *subtitle_text_1 = "w / s - move player 1";
+			const char *subtitle_text_2 = "i / k - move player 2";
+			const char *subtitle_text_3 = "Press b to go back";
+
+			const int title_width = MeasureText(title_text, font_size_h1);
+			const int subtitle_width_1 = MeasureText(subtitle_text_1, font_size_h2);
+			const int subtitle_width_2 = MeasureText(subtitle_text_2, font_size_h2);
+			const int subtitle_width_3 = MeasureText(subtitle_text_3, font_size_h2);
+
+			DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, overlay);
+			DrawText(title_text, SCREEN_WIDTH / 2 - title_width / 2, 250, font_size_h1, WHITE);
+			DrawText(subtitle_text_1, SCREEN_WIDTH / 2 - subtitle_width_1 / 2, 350, font_size_h2, WHITE);
+			DrawText(subtitle_text_2, SCREEN_WIDTH / 2 - subtitle_width_2 / 2, 400, font_size_h2, WHITE);
+			DrawText(subtitle_text_3, SCREEN_WIDTH / 2 - subtitle_width_3 / 2, 500, font_size_h2, WHITE);
 		};
 
 		BeginDrawing();
@@ -385,51 +458,84 @@ int main()
 		DrawText(timer_text, SCREEN_WIDTH / 2 - timer_width / 2, 20, font_size_h2, WHITE);
 		DrawText(speed_multiplier_text, SCREEN_WIDTH / 2 - speed_multiplier_width / 2, 64, font_size_p, WHITE);
 
-		switch (screen_current)
+		// handle gameplay
+		switch (screen_gameplay_current)
 		{
-		case TITLE:
+		case GAMEPLAY_2_CPU:
 		{
-			const char *title_text = "My Pong Game";
-			const char *subtitle_text_1 = "Press 1 for 1-player mode";
-			const char *subtitle_text_2 = "Press 2 for 2-player mode";
-
-			const int title_width = MeasureText(title_text, font_size_h1);
-			const int subtitle_width_1 = MeasureText(subtitle_text_1, font_size_h2);
-			const int subtitle_width_2 = MeasureText(subtitle_text_2, font_size_h2);
-
 			cpu_1_paddle.Draw();
 			cpu_2_paddle.Draw();
 			DrawScoreLeft(cpu_1_score);
 			DrawScoreRight(cpu_2_score);
 
-			DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, overlay);
-			DrawText(title_text, SCREEN_WIDTH / 2 - title_width / 2, 300, font_size_h1, WHITE);
-			DrawText(subtitle_text_1, SCREEN_WIDTH / 2 - subtitle_width_1 / 2, 400, font_size_h2, WHITE);
-			DrawText(subtitle_text_2, SCREEN_WIDTH / 2 - subtitle_width_2 / 2, 450, font_size_h2, WHITE);
+			if (screen_overlay_current == CONTROLS)
+			{
+				DrawControls();
+			}
+			else
+			{
+				const char *title_text = "My Pong Game";
+				const char *subtitle_text_1 = "Press 1 for 1-player mode";
+				const char *subtitle_text_2 = "Press 2 for 2-player mode";
+				const char *subtitle_text_3 = "Press c to view controls";
+
+				const int title_width = MeasureText(title_text, font_size_h1);
+				const int subtitle_width_1 = MeasureText(subtitle_text_1, font_size_h2);
+				const int subtitle_width_2 = MeasureText(subtitle_text_2, font_size_h2);
+				const int subtitle_width_3 = MeasureText(subtitle_text_3, font_size_h2);
+
+				DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, overlay);
+				DrawText(title_text, SCREEN_WIDTH / 2 - title_width / 2, 250, font_size_h1, WHITE);
+				DrawText(subtitle_text_1, SCREEN_WIDTH / 2 - subtitle_width_1 / 2, 350, font_size_h2, WHITE);
+				DrawText(subtitle_text_2, SCREEN_WIDTH / 2 - subtitle_width_2 / 2, 400, font_size_h2, WHITE);
+				DrawText(subtitle_text_3, SCREEN_WIDTH / 2 - subtitle_width_3 / 2, 500, font_size_h2, WHITE);
+			}
 
 			break;
 		}
-		case MODE_1_PLAYER:
+		case GAMEPLAY_1_PLAYER:
 			player_1_paddle.Draw();
 			cpu_2_paddle.Draw();
 			DrawScoreLeft(player_1_score);
 			DrawScoreRight(cpu_2_score);
 
-			if (screen_pause)
+			if (is_screen_overlay_displaying)
 			{
-				DrawPause();
+				if (screen_overlay_current == PAUSE)
+				{
+					DrawPause();
+				}
+				else if (screen_overlay_current == CONTROLS)
+				{
+					DrawControls();
+				}
+			}
+			else
+			{
+				DrawText("Press p to pause", 10, SCREEN_HEIGHT - 30, font_size_p, WHITE);
 			}
 
 			break;
-		case MODE_2_PLAYER:
+		case GAMEPLAY_2_PLAYER:
 			player_1_paddle.Draw();
 			player_2_paddle.Draw();
 			DrawScoreLeft(player_1_score);
 			DrawScoreRight(player_2_score);
 
-			if (screen_pause)
+			if (is_screen_overlay_displaying)
 			{
-				DrawPause();
+				if (screen_overlay_current == PAUSE)
+				{
+					DrawPause();
+				}
+				else if (screen_overlay_current == CONTROLS)
+				{
+					DrawControls();
+				}
+			}
+			else
+			{
+				DrawText("Press p to pause", 10, SCREEN_HEIGHT - 30, font_size_p, WHITE);
 			}
 
 			break;
