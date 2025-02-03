@@ -48,10 +48,10 @@ public:
 	{
 		DrawCircle(x, y, radius, yellow);
 	}
-	void Update(float speed_multiplier)
+	void Update(float speed_total)
 	{
-		x = x + speed_x * speed_multiplier;
-		y = y + speed_y * speed_multiplier;
+		x = x + speed_x * speed_total;
+		y = y + speed_y * speed_total;
 
 		if (y + radius >= GetScreenHeight() || y - radius <= 0)
 		{
@@ -101,15 +101,15 @@ public:
 class PaddlePlayer1 : public Paddle
 {
 public:
-	void Update(float speed_multiplier)
+	void Update(float speed_total)
 	{
 		if (IsKeyDown(KEY_W))
 		{
-			y = y - speed * speed_multiplier;
+			y = y - speed * speed_total;
 		}
 		if (IsKeyDown(KEY_S))
 		{
-			y = y + speed * speed_multiplier;
+			y = y + speed * speed_total;
 		}
 		LimitMovement();
 	}
@@ -117,15 +117,15 @@ public:
 class PaddlePlayer2 : public Paddle
 {
 public:
-	void Update(float speed_multiplier)
+	void Update(float speed_total)
 	{
 		if (IsKeyDown(KEY_I))
 		{
-			y = y - speed * speed_multiplier;
+			y = y - speed * speed_total;
 		}
 		if (IsKeyDown(KEY_K))
 		{
-			y = y + speed * speed_multiplier;
+			y = y + speed * speed_total;
 		}
 		LimitMovement();
 	}
@@ -133,15 +133,15 @@ public:
 class PaddleCpu : public Paddle
 {
 public:
-	void Update(int ball_y, float speed_multiplier)
+	void Update(int ball_y, float speed_total)
 	{
 		if (y + height / 2 > ball_y)
 		{
-			y = y - speed * speed_multiplier;
+			y = y - speed * speed_total;
 		}
 		if (y + height / 2 <= ball_y)
 		{
-			y = y + speed * speed_multiplier;
+			y = y + speed * speed_total;
 		}
 		LimitMovement();
 	}
@@ -151,20 +151,34 @@ class Timer
 public:
 	double timestamp_start;
 	double timestamp_end;
-	double elapsed;
-	float speed_multiplier;
+	double time_total;
+	double time_old;
+	float speed_total;
+	float speed_old;
 
 	void Update()
 	{
+
 		timestamp_end = GetTime();
-		elapsed = timestamp_end - timestamp_start;
-		speed_multiplier = 1 + elapsed / 60;
+		time_total = time_old + timestamp_end - timestamp_start;
+		speed_total = speed_old + (timestamp_end - timestamp_start) / 60;
+	}
+	void Pause()
+	{
+		time_old = time_total;
+		speed_old = speed_total;
+	}
+	void Resume()
+	{
+		timestamp_start = GetTime();
 	}
 	void Reset()
 	{
 		timestamp_start = GetTime();
-		elapsed = 0;
-		speed_multiplier = 0;
+		time_total = 0;
+		time_old = 0;
+		speed_total = 0;
+		speed_old = 1;
 	}
 };
 
@@ -190,9 +204,9 @@ int main()
 
 	screen_gameplay_t screen_gameplay_current = GAMEPLAY_2_CPU;
 	screen_overlay_t screen_overlay_current = TITLE;
-	bool is_screen_overlay_displaying = true;
+	bool is_screen_overlay_on = true;
 	bool is_game_new = true;
-	bool is_game_updating = true;
+	bool is_game_update_on = true;
 
 	ball.radius = 20;
 	ball.x = SCREEN_WIDTH / 2;
@@ -200,25 +214,25 @@ int main()
 	ball.speed_x = 7;
 	ball.speed_y = 7;
 
-	cpu_1_paddle.width = 25;
+	cpu_1_paddle.width = 24;
 	cpu_1_paddle.height = 120;
 	cpu_1_paddle.x = 10;
 	cpu_1_paddle.y = SCREEN_HEIGHT / 2 - cpu_1_paddle.height / 2;
 	cpu_1_paddle.speed = 6;
 
-	cpu_2_paddle.width = 25;
+	cpu_2_paddle.width = 24;
 	cpu_2_paddle.height = 120;
 	cpu_2_paddle.x = SCREEN_WIDTH - cpu_2_paddle.width - 10;
 	cpu_2_paddle.y = SCREEN_HEIGHT / 2 - cpu_2_paddle.height / 2;
 	cpu_2_paddle.speed = 6;
 
-	player_1_paddle.width = 25;
+	player_1_paddle.width = 24;
 	player_1_paddle.height = 120;
 	player_1_paddle.x = 10;
 	player_1_paddle.y = SCREEN_HEIGHT / 2 - player_1_paddle.height / 2;
 	player_1_paddle.speed = 6;
 
-	player_2_paddle.width = 25;
+	player_2_paddle.width = 24;
 	player_2_paddle.height = 120;
 	player_2_paddle.x = SCREEN_WIDTH - player_2_paddle.width - 10;
 	player_2_paddle.y = SCREEN_HEIGHT / 2 - player_2_paddle.height / 2;
@@ -226,8 +240,10 @@ int main()
 
 	timer.timestamp_start = GetTime();
 	timer.timestamp_end = GetTime();
-	timer.elapsed = 0;
-	timer.speed_multiplier = 1;
+	timer.time_total = 0;
+	timer.time_old = 0;
+	timer.speed_total = 0;
+	timer.speed_old = 1;
 
 	// game loop
 	// --------------------
@@ -270,9 +286,9 @@ int main()
 			timer.Reset();
 			is_game_new = false;
 		};
-		auto EndGame = [&is_game_new, &is_screen_overlay_displaying, &ResetGame, &screen_gameplay_current, &screen_overlay_current]()
+		auto EndGame = [&is_game_new, &is_screen_overlay_on, &ResetGame, &screen_gameplay_current, &screen_overlay_current]()
 		{
-			is_screen_overlay_displaying = true;
+			is_screen_overlay_on = true;
 			screen_overlay_current = TITLE;
 			screen_gameplay_current = GAMEPLAY_2_CPU;
 			ResetGame();
@@ -283,9 +299,9 @@ int main()
 		switch (screen_gameplay_current)
 		{
 		case GAMEPLAY_2_CPU:
-			ball.Update(timer.speed_multiplier);
-			cpu_1_paddle.Update(ball.y, timer.speed_multiplier);
-			cpu_2_paddle.Update(ball.y, timer.speed_multiplier);
+			ball.Update(timer.speed_total);
+			cpu_1_paddle.Update(ball.y, timer.speed_total);
+			cpu_2_paddle.Update(ball.y, timer.speed_total);
 			CheckCollisionGoal();
 			CheckCollisionPaddle(cpu_1_paddle);
 			CheckCollisionPaddle(cpu_2_paddle);
@@ -295,15 +311,16 @@ int main()
 		case GAMEPLAY_1_PLAYER:
 			if (IsKeyPressed(KEY_P))
 			{
-				is_screen_overlay_displaying = true;
+				is_screen_overlay_on = true;
 				screen_overlay_current = PAUSE;
-				is_game_updating = false;
+				is_game_update_on = false;
+				timer.Pause();
 			}
-			if (is_game_updating)
+			if (is_game_update_on)
 			{
-				ball.Update(timer.speed_multiplier);
-				player_1_paddle.Update(timer.speed_multiplier);
-				cpu_2_paddle.Update(ball.y, timer.speed_multiplier);
+				ball.Update(timer.speed_total);
+				player_1_paddle.Update(timer.speed_total);
+				cpu_2_paddle.Update(ball.y, timer.speed_total);
 				CheckCollisionGoal();
 				CheckCollisionPaddle(player_1_paddle);
 				CheckCollisionPaddle(cpu_2_paddle);
@@ -314,15 +331,15 @@ int main()
 		case GAMEPLAY_2_PLAYER:
 			if (IsKeyPressed(KEY_P))
 			{
-				is_screen_overlay_displaying = true;
+				is_screen_overlay_on = true;
 				screen_overlay_current = PAUSE;
-				is_game_updating = false;
+				is_game_update_on = false;
 			}
-			if (is_game_updating)
+			if (is_game_update_on)
 			{
-				ball.Update(timer.speed_multiplier);
-				player_1_paddle.Update(timer.speed_multiplier);
-				player_2_paddle.Update(timer.speed_multiplier);
+				ball.Update(timer.speed_total);
+				player_1_paddle.Update(timer.speed_total);
+				player_2_paddle.Update(timer.speed_total);
 				CheckCollisionGoal();
 				CheckCollisionPaddle(player_1_paddle);
 				CheckCollisionPaddle(player_2_paddle);
@@ -335,20 +352,20 @@ int main()
 		}
 
 		// handle overlay
-		if (is_screen_overlay_displaying)
+		if (is_screen_overlay_on)
 		{
 			switch (screen_overlay_current)
 			{
 			case TITLE:
 				if (IsKeyPressed(KEY_ONE))
 				{
-					is_screen_overlay_displaying = false;
+					is_screen_overlay_on = false;
 					screen_gameplay_current = GAMEPLAY_1_PLAYER;
 					ResetGame();
 				}
 				else if (IsKeyPressed(KEY_TWO))
 				{
-					is_screen_overlay_displaying = false;
+					is_screen_overlay_on = false;
 					screen_gameplay_current = GAMEPLAY_2_PLAYER;
 					ResetGame();
 				}
@@ -361,13 +378,14 @@ int main()
 			case PAUSE:
 				if (IsKeyPressed(KEY_R))
 				{
-					is_screen_overlay_displaying = false;
-					is_game_updating = true;
+					is_screen_overlay_on = false;
+					is_game_update_on = true;
+					timer.Resume();
 				}
 				else if (IsKeyPressed(KEY_X))
 				{
 					EndGame();
-					is_game_updating = true;
+					is_game_update_on = true;
 				}
 				else if (IsKeyPressed(KEY_C))
 				{
@@ -399,10 +417,10 @@ int main()
 
 		// draw objects
 		// --------------------
-		const char *timer_text = TextFormat("%02i:%02i", static_cast<int>(timer.elapsed) / 60, static_cast<int>(std::fmod(timer.elapsed, 60)));
+		const char *timer_text = TextFormat("%02i:%02i", static_cast<int>(timer.time_total) / 60, static_cast<int>(std::fmod(timer.time_total, 60)));
 		const int timer_width = MeasureText(timer_text, font_size_h2);
-		const char *speed_multiplier_text = TextFormat("Speed: %.2f", timer.speed_multiplier);
-		const int speed_multiplier_width = MeasureText(speed_multiplier_text, font_size_p);
+		const char *speed_total_text = TextFormat("Speed: %.2f", floor(timer.speed_total * 100) / 100);
+		const int speed_total_width = MeasureText(speed_total_text, font_size_p);
 
 		auto DrawScoreLeft = [](int score)
 		{
@@ -456,7 +474,7 @@ int main()
 		DrawLine(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT, WHITE);
 		ball.Draw();
 		DrawText(timer_text, SCREEN_WIDTH / 2 - timer_width / 2, 20, font_size_h2, WHITE);
-		DrawText(speed_multiplier_text, SCREEN_WIDTH / 2 - speed_multiplier_width / 2, 64, font_size_p, WHITE);
+		DrawText(speed_total_text, SCREEN_WIDTH / 2 - speed_total_width / 2, 64, font_size_p, WHITE);
 
 		// handle gameplay
 		switch (screen_gameplay_current)
@@ -499,7 +517,7 @@ int main()
 			DrawScoreLeft(player_1_score);
 			DrawScoreRight(cpu_2_score);
 
-			if (is_screen_overlay_displaying)
+			if (is_screen_overlay_on)
 			{
 				if (screen_overlay_current == PAUSE)
 				{
@@ -522,7 +540,7 @@ int main()
 			DrawScoreLeft(player_1_score);
 			DrawScoreRight(player_2_score);
 
-			if (is_screen_overlay_displaying)
+			if (is_screen_overlay_on)
 			{
 				if (screen_overlay_current == PAUSE)
 				{
