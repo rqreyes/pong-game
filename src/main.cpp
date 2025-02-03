@@ -1,6 +1,8 @@
 #include <iostream>
 #include <raylib.h>
 
+// global declaractions
+// --------------------------------------------------------------------------------
 typedef enum
 {
 	GAMEPLAY_2_CPU,
@@ -13,6 +15,13 @@ typedef enum
 	PAUSE,
 	CONTROLS,
 } screen_overlay_t;
+
+screen_gameplay_t screen_gameplay_current = GAMEPLAY_2_CPU;
+screen_overlay_t screen_overlay_current = TITLE;
+
+bool is_screen_overlay_on = true;
+bool is_game_new = true;
+bool is_game_update_on = true;
 
 const int font_size_h1 = 80;
 const int font_size_h2 = 40;
@@ -39,6 +48,8 @@ void ScoreReset()
 	player_2_score = 0;
 }
 
+// class declarations
+// --------------------------------------------------------------------------------
 class Ball
 {
 public:
@@ -166,7 +177,6 @@ public:
 
 	void Update()
 	{
-
 		timestamp_end = GetTime();
 		time_total = time_old + timestamp_end - timestamp_start;
 		speed_total = speed_old + (timestamp_end - timestamp_start) / 60;
@@ -197,24 +207,18 @@ PaddlePlayer1 player_1_paddle;
 PaddlePlayer2 player_2_paddle;
 Timer timer;
 
-// --------------------
+// --------------------------------------------------------------------------------
 // entry point
-// --------------------
+// --------------------------------------------------------------------------------
 int main()
 {
 	// initialization
-	// --------------------
+	// --------------------------------------------------------------------------------
 	const int SCREEN_WIDTH = 1280;
 	const int SCREEN_HEIGHT = 800;
 
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "King Pong");
 	SetTargetFPS(60);
-
-	screen_gameplay_t screen_gameplay_current = GAMEPLAY_2_CPU;
-	screen_overlay_t screen_overlay_current = TITLE;
-	bool is_screen_overlay_on = true;
-	bool is_game_new = true;
-	bool is_game_update_on = true;
 
 	ball.radius = 20;
 	ball.x_1 = SCREEN_WIDTH / 2;
@@ -258,11 +262,11 @@ int main()
 	timer.speed_old = 1;
 
 	// game loop
-	// --------------------
+	// --------------------------------------------------------------------------------
 	while (!WindowShouldClose())
 	{
 		// update objects
-		// --------------------
+		// --------------------------------------------------------------------------------
 		auto CheckCollisionGoal = []()
 		{
 			if (ball.x_1 + ball.radius >= GetScreenWidth())
@@ -287,7 +291,7 @@ int main()
 				ball.speed_x *= -1;
 			}
 		};
-		auto ResetGame = [&is_game_new]()
+		auto ResetGame = []()
 		{
 			ball.Reset();
 			cpu_1_paddle.Reset(cpu_1_paddle.height);
@@ -298,7 +302,7 @@ int main()
 			timer.Reset();
 			is_game_new = false;
 		};
-		auto EndGame = [&is_game_new, &is_screen_overlay_on, &ResetGame, &screen_gameplay_current, &screen_overlay_current]()
+		auto EndGame = [&ResetGame]()
 		{
 			is_screen_overlay_on = true;
 			screen_overlay_current = TITLE;
@@ -428,7 +432,7 @@ int main()
 		}
 
 		// draw objects
-		// --------------------
+		// --------------------------------------------------------------------------------
 		const char *timer_text = TextFormat("%02i:%02i", static_cast<int>(timer.time_total) / 60, static_cast<int>(std::fmod(timer.time_total, 60)));
 		const int timer_width = MeasureText(timer_text, font_size_h2);
 		const char *speed_total_text = TextFormat("Speed: %.2f", floor(timer.speed_total * 100) / 100);
@@ -577,7 +581,7 @@ int main()
 	}
 
 	// termination
-	// --------------------
+	// --------------------------------------------------------------------------------
 	CloseWindow();
 	return 0;
 }
