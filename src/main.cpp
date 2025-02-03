@@ -34,34 +34,22 @@ void ScoreReset()
 class Ball
 {
 public:
+	int radius;
 	float x, y;
 	int speed_x, speed_y;
-	int radius;
 
 	void Draw()
 	{
 		DrawCircle(x, y, radius, yellow);
 	}
-	void Update()
+	void Update(float speed_multiplier)
 	{
-		x += speed_x;
-		y += speed_y;
+		x = x + speed_x * speed_multiplier;
+		y = y + speed_y * speed_multiplier;
 
 		if (y + radius >= GetScreenHeight() || y - radius <= 0)
 		{
 			speed_y *= -1;
-		}
-		if (x + radius >= GetScreenWidth())
-		{
-			cpu_1_score += 1;
-			player_1_score += 1;
-			Reset();
-		}
-		if (x - radius <= 0)
-		{
-			cpu_2_score += 1;
-			player_2_score += 1;
-			Reset();
 		}
 	}
 	void Reset()
@@ -107,15 +95,15 @@ public:
 class PaddlePlayer1 : public Paddle
 {
 public:
-	void Update()
+	void Update(float speed_multiplier)
 	{
 		if (IsKeyDown(KEY_W))
 		{
-			y -= speed;
+			y = y - speed * speed_multiplier;
 		}
 		if (IsKeyDown(KEY_S))
 		{
-			y += speed;
+			y = y + speed * speed_multiplier;
 		}
 		LimitMovement();
 	}
@@ -123,15 +111,15 @@ public:
 class PaddlePlayer2 : public Paddle
 {
 public:
-	void Update()
+	void Update(float speed_multiplier)
 	{
 		if (IsKeyDown(KEY_I))
 		{
-			y -= speed;
+			y = y - speed * speed_multiplier;
 		}
 		if (IsKeyDown(KEY_K))
 		{
-			y += speed;
+			y = y + speed * speed_multiplier;
 		}
 		LimitMovement();
 	}
@@ -139,15 +127,15 @@ public:
 class PaddleCpu : public Paddle
 {
 public:
-	void Update(int ball_y)
+	void Update(int ball_y, float speed_multiplier)
 	{
 		if (y + height / 2 > ball_y)
 		{
-			y -= speed;
+			y = y - speed * speed_multiplier;
 		}
 		if (y + height / 2 <= ball_y)
 		{
-			y += speed;
+			y = y + speed * speed_multiplier;
 		}
 		LimitMovement();
 	}
@@ -158,16 +146,19 @@ public:
 	double timestamp_start;
 	double timestamp_end;
 	double elapsed;
+	float speed_multiplier;
 
 	void Update()
 	{
 		timestamp_end = GetTime();
 		elapsed = timestamp_end - timestamp_start;
+		speed_multiplier = 1 + elapsed / 60;
 	}
 	void Reset()
 	{
 		timestamp_start = GetTime();
 		elapsed = 0;
+		speed_multiplier = 0;
 	}
 };
 
@@ -225,9 +216,10 @@ int main()
 	player_2_paddle.y = SCREEN_HEIGHT / 2 - player_2_paddle.height / 2;
 	player_2_paddle.speed = 6;
 
-	timer.elapsed = 0;
-	timer.timestamp_end = GetTime();
 	timer.timestamp_start = GetTime();
+	timer.timestamp_end = GetTime();
+	timer.elapsed = 0;
+	timer.speed_multiplier = 1;
 
 	// game loop
 	// --------------------
@@ -235,7 +227,24 @@ int main()
 	{
 		// update objects
 		// --------------------
-		auto CheckCollision = [](Paddle player_paddle)
+		auto CheckCollisionGoal = []()
+		{
+			if (ball.x + ball.radius >= GetScreenWidth())
+			{
+				cpu_1_score += 1;
+				player_1_score += 1;
+				ball.Reset();
+				timer.Reset();
+			}
+			else if (ball.x - ball.radius <= 0)
+			{
+				cpu_2_score += 1;
+				player_2_score += 1;
+				ball.Reset();
+				timer.Reset();
+			}
+		};
+		auto CheckCollisionPaddle = [](Paddle player_paddle)
 		{
 			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_paddle.x, player_paddle.y, player_paddle.width, player_paddle.height}))
 			{
@@ -264,11 +273,12 @@ int main()
 		switch (screen_current)
 		{
 		case TITLE:
-			ball.Update();
-			cpu_1_paddle.Update(ball.y);
-			cpu_2_paddle.Update(ball.y);
-			CheckCollision(cpu_1_paddle);
-			CheckCollision(cpu_2_paddle);
+			ball.Update(timer.speed_multiplier);
+			cpu_1_paddle.Update(ball.y, timer.speed_multiplier);
+			cpu_2_paddle.Update(ball.y, timer.speed_multiplier);
+			CheckCollisionGoal();
+			CheckCollisionPaddle(cpu_1_paddle);
+			CheckCollisionPaddle(cpu_2_paddle);
 			timer.Update();
 
 			if (IsKeyPressed(KEY_ONE))
@@ -297,11 +307,12 @@ int main()
 			}
 			else
 			{
-				ball.Update();
-				player_1_paddle.Update();
-				cpu_2_paddle.Update(ball.y);
-				CheckCollision(player_1_paddle);
-				CheckCollision(cpu_2_paddle);
+				ball.Update(timer.speed_multiplier);
+				player_1_paddle.Update(timer.speed_multiplier);
+				cpu_2_paddle.Update(ball.y, timer.speed_multiplier);
+				CheckCollisionGoal();
+				CheckCollisionPaddle(player_1_paddle);
+				CheckCollisionPaddle(cpu_2_paddle);
 				timer.Update();
 			}
 
@@ -320,11 +331,12 @@ int main()
 			}
 			else
 			{
-				ball.Update();
-				player_1_paddle.Update();
-				player_2_paddle.Update();
-				CheckCollision(player_1_paddle);
-				CheckCollision(player_2_paddle);
+				ball.Update(timer.speed_multiplier);
+				player_1_paddle.Update(timer.speed_multiplier);
+				player_2_paddle.Update(timer.speed_multiplier);
+				CheckCollisionGoal();
+				CheckCollisionPaddle(player_1_paddle);
+				CheckCollisionPaddle(player_2_paddle);
 				timer.Update();
 			}
 
@@ -337,6 +349,8 @@ int main()
 		// --------------------
 		const char *timer_text = TextFormat("%02i:%02i", static_cast<int>(timer.elapsed) / 60, static_cast<int>(std::fmod(timer.elapsed, 60)));
 		const int timer_width = MeasureText(timer_text, font_size_h2);
+		const char *speed_multiplier_text = TextFormat("Speed: %.2f", timer.speed_multiplier);
+		const int speed_multiplier_width = MeasureText(speed_multiplier_text, font_size_p);
 
 		auto DrawScoreLeft = [](int score)
 		{
@@ -369,6 +383,7 @@ int main()
 		DrawLine(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT, WHITE);
 		ball.Draw();
 		DrawText(timer_text, SCREEN_WIDTH / 2 - timer_width / 2, 20, font_size_h2, WHITE);
+		DrawText(speed_multiplier_text, SCREEN_WIDTH / 2 - speed_multiplier_width / 2, 64, font_size_p, WHITE);
 
 		switch (screen_current)
 		{
