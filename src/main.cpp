@@ -23,6 +23,8 @@ Color green = Color{38, 185, 154, 255};
 Color green_dark = Color{20, 160, 133, 255};
 Color green_light = Color{129, 204, 184, 255};
 Color yellow = Color{243, 213, 91, 255};
+Color yellow_shadow_1 = Color{243, 213, 91, 191};
+Color yellow_shadow_2 = Color{243, 213, 91, 128};
 
 int cpu_1_score = 0;
 int cpu_2_score = 0;
@@ -41,27 +43,33 @@ class Ball
 {
 public:
 	int radius;
-	float x, y;
+	float x_1, x_2, x_3, y_1, y_2, y_3;
 	int speed_x, speed_y;
 
 	void Draw()
 	{
-		DrawCircle(x, y, radius, yellow);
+		DrawCircle(x_1, y_1, radius, yellow);
+		DrawCircle(x_2, y_2, radius, yellow_shadow_1);
+		DrawCircle(x_3, y_3, radius, yellow_shadow_2);
 	}
 	void Update(float speed_total)
 	{
-		x = x + speed_x * speed_total;
-		y = y + speed_y * speed_total;
+		x_3 = x_2;
+		x_2 = x_1;
+		x_1 = x_1 + (speed_x * speed_total);
+		y_3 = y_2;
+		y_2 = y_1;
+		y_1 = y_1 + (speed_y * speed_total);
 
-		if (y + radius >= GetScreenHeight() || y - radius <= 0)
+		if (y_1 + radius >= GetScreenHeight() || y_1 - radius <= 0)
 		{
 			speed_y *= -1;
 		}
 	}
 	void Reset()
 	{
-		x = GetScreenWidth() / 2;
-		y = GetScreenHeight() / 2;
+		x_1 = GetScreenWidth() / 2;
+		y_1 = GetScreenHeight() / 2;
 
 		int speed_choices[2] = {-1, 1};
 		speed_x *= speed_choices[GetRandomValue(0, 1)];
@@ -209,8 +217,12 @@ int main()
 	bool is_game_update_on = true;
 
 	ball.radius = 20;
-	ball.x = SCREEN_WIDTH / 2;
-	ball.y = SCREEN_HEIGHT / 2;
+	ball.x_1 = SCREEN_WIDTH / 2;
+	ball.x_2 = SCREEN_WIDTH / 2;
+	ball.x_3 = SCREEN_WIDTH / 2;
+	ball.y_1 = SCREEN_HEIGHT / 2;
+	ball.y_2 = SCREEN_HEIGHT / 2;
+	ball.y_3 = SCREEN_HEIGHT / 2;
 	ball.speed_x = 7;
 	ball.speed_y = 7;
 
@@ -253,14 +265,14 @@ int main()
 		// --------------------
 		auto CheckCollisionGoal = []()
 		{
-			if (ball.x + ball.radius >= GetScreenWidth())
+			if (ball.x_1 + ball.radius >= GetScreenWidth())
 			{
 				cpu_1_score += 1;
 				player_1_score += 1;
 				ball.Reset();
 				timer.Reset();
 			}
-			else if (ball.x - ball.radius <= 0)
+			else if (ball.x_1 - ball.radius <= 0)
 			{
 				cpu_2_score += 1;
 				player_2_score += 1;
@@ -270,7 +282,7 @@ int main()
 		};
 		auto CheckCollisionPaddle = [](Paddle player_paddle)
 		{
-			if (CheckCollisionCircleRec(Vector2{ball.x, ball.y}, ball.radius, Rectangle{player_paddle.x, player_paddle.y, player_paddle.width, player_paddle.height}))
+			if (CheckCollisionCircleRec(Vector2{ball.x_1, ball.y_1}, ball.radius, Rectangle{player_paddle.x, player_paddle.y, player_paddle.width, player_paddle.height}))
 			{
 				ball.speed_x *= -1;
 			}
@@ -300,8 +312,8 @@ int main()
 		{
 		case GAMEPLAY_2_CPU:
 			ball.Update(timer.speed_total);
-			cpu_1_paddle.Update(ball.y, timer.speed_total);
-			cpu_2_paddle.Update(ball.y, timer.speed_total);
+			cpu_1_paddle.Update(ball.y_1, timer.speed_total);
+			cpu_2_paddle.Update(ball.y_1, timer.speed_total);
 			CheckCollisionGoal();
 			CheckCollisionPaddle(cpu_1_paddle);
 			CheckCollisionPaddle(cpu_2_paddle);
@@ -320,7 +332,7 @@ int main()
 			{
 				ball.Update(timer.speed_total);
 				player_1_paddle.Update(timer.speed_total);
-				cpu_2_paddle.Update(ball.y, timer.speed_total);
+				cpu_2_paddle.Update(ball.y_1, timer.speed_total);
 				CheckCollisionGoal();
 				CheckCollisionPaddle(player_1_paddle);
 				CheckCollisionPaddle(cpu_2_paddle);
