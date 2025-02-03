@@ -199,7 +199,7 @@ int main()
 	const int SCREEN_WIDTH = 1280;
 	const int SCREEN_HEIGHT = 800;
 
-	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "My Pong Game");
+	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "King Pong");
 	SetTargetFPS(60);
 
 	screen_gameplay_t screen_gameplay_current = GAMEPLAY_2_CPU;
@@ -492,7 +492,7 @@ int main()
 			}
 			else
 			{
-				const char *title_text = "My Pong Game";
+				const char *title_text = "King Pong";
 				const char *subtitle_text_1 = "Press 1 for 1-player mode";
 				const char *subtitle_text_2 = "Press 2 for 2-player mode";
 				const char *subtitle_text_3 = "Press c to view controls";
