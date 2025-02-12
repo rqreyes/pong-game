@@ -195,7 +195,7 @@ public:
 		timestamp_start = GetTime();
 		time_total = 0;
 		time_old = 0;
-		speed_total = 0;
+		speed_total = 1;
 		speed_old = 1;
 	}
 };
@@ -258,7 +258,7 @@ int main()
 	timer.timestamp_end = GetTime();
 	timer.time_total = 0;
 	timer.time_old = 0;
-	timer.speed_total = 0;
+	timer.speed_total = 1;
 	timer.speed_old = 1;
 
 	// game loop
